@@ -2,6 +2,7 @@ using Basket.API.Basket.DeleteBasket;
 using Basket.API.Basket.GetBasket;
 using Basket.API.Basket.StoreBasket;
 using Basket.API.Data;
+using Discount.gRPC;
 using FluentValidation;
 using HealthChecks.UI.Client;
 using Marten;
@@ -28,6 +29,11 @@ builder.Services.AddMediatR(config =>
     config.RegisterServicesFromAssembly(basketAsembly);
     config.AddOpenBehavior(typeof(ValidationBehavior<,>));
     config.AddOpenBehavior(typeof(LogginBehavior<,>));
+});
+
+builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(options =>
+{
+    options.Address = new Uri(builder.Configuration["GrpcSettings:DiscountUrl"]!);
 });
 
 //DB

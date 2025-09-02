@@ -1,5 +1,7 @@
 ﻿
 using Basket.API.Data;
+using Discount.gRPC;
+using JasperFx.Events.Daemon;
 
 namespace Basket.API.Basket.StoreBasket
 {
@@ -14,13 +16,24 @@ namespace Basket.API.Basket.StoreBasket
             RuleFor(x => x.Cart.UserName).NotEmpty().WithMessage("User is required");
         }
     }
-    internal class StoreBasketCommandHandler(IBasketRepository repository) : ICommandHandler<StoreBasketCommand, StoreBasketResult>
+    internal class StoreBasketCommandHandler(IBasketRepository repository, DiscountProtoService.DiscountProtoServiceClient discountProto) : ICommandHandler<StoreBasketCommand, StoreBasketResult>
     {
         public async Task<StoreBasketResult> Handle(StoreBasketCommand command, CancellationToken cancellationToken)
         {
+            await ApplyDiscounts(command.Cart, cancellationToken);
+
             await repository.StoreBasket(command.Cart, cancellationToken);
 
             return new StoreBasketResult(command.Cart.UserName);
+        }
+
+        public async Task ApplyDiscounts(ShoppingCart cart, CancellationToken cancellationToken)
+        {
+            foreach (var product in cart.Items)
+            {
+                var coupon = await discountProto.GetDiscountAsync(new GetDiscountRequest { ProductName = product.ProductName }, cancellationToken: cancellationToken);
+                product.Price -= coupon.Amount;
+            }
         }
     }
 }
